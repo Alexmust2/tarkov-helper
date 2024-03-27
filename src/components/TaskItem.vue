@@ -10,7 +10,7 @@
             <div class="task-trader">{{ task.trader }}</div>
             <div class="task-kappa">{{task.kappaRequired ? 'Нужно для каппы' : 'Не нужно для каппы'}}</div>
             <button @click="toggleTaskCompletion" v-if="!isTaskCompleted(task.id)" class="complete-button">
-                Выполнить
+                Выполнитsь
             </button>
             <button @click="toggleTaskCompletion" v-else class="cancel-button">
                 Отменить
