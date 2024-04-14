@@ -76,52 +76,47 @@ export default {
   },
   async mounted() {
     const query = gql`
-  {
-    tasks (lang: ru) {
+    {
+  tasks(lang: ru) {
+    id
+    name
+    minPlayerLevel
+    kappaRequired
+    trader{
       id
       name
-      experience
-      kappaRequired
-      taskRequirements {
-        task {
-          id
-          name
-        }
-      }
-      trader {
+    }
+    taskRequirements {
+      task {
         id
         name
-        imageLink
-      }
-      objectives {
-        id
-        optional
-        description
-        type
       }
     }
-    traders (lang: ru){
+    objectives {
+      ... on TaskObjectiveItem {
+        type
+        description
+        item{
+          iconLink
+        }
+        count
+      }
+    }
+  }
+      traders (lang: ru){
       id
       name
       imageLink
     }
-  }
+}
+
 `;
 
     request('https://api.tarkov.dev/graphql', query).then((data) => {
-      this.tasks = data.tasks.map((task) => ({
-        id: task.id,
-        name: task.name,
-        trader: task.trader.name,
-        trader_id: task.trader.id,
-        experience: task.experience,
-        kappaRequired: task.kappaRequired,
-        minPlayerLevel: task.minPlayerLevel,
-        taskRequirements: task.taskRequirements,
-        objectives: task.objectives,
-      }));
+      console.log(data.tasks);
+      this.tasks = data.tasks
       this.traders = data.traders;
-      console.log(this.tasks);
+      console.log(this.traders);
       // Update completedTasks from localStorage
       this.completedTasks =
         JSON.parse(localStorage.getItem('completedTasks')) || [];
@@ -131,7 +126,7 @@ export default {
     filteredTasks() {
       if (!this.selectedTrader) return this.tasks;
       return this.tasks.filter(
-        (task) => task.trader_id === this.selectedTrader
+        (task) => task.trader.id === this.selectedTrader
       );
     },
     filteredSortedTasks() {
@@ -144,7 +139,7 @@ export default {
     },
     tradersWithTasks() {
       return this.traders.filter((trader) =>
-        this.tasks.some((task) => task.trader_id === trader.id)
+        this.tasks.some((task) => task.trader.id === trader.id)
       );
     },
     sortedTasks() {
@@ -170,7 +165,7 @@ export default {
       }
       if (this.selectedTrader) {
         sorted = sorted.filter(
-          (task) => task.trader_id === this.selectedTrader
+          (task) => task.trader.id === this.selectedTrader
         );
       }
       return sorted;
