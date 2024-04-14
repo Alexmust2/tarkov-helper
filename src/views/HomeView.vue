@@ -10,9 +10,12 @@
 </template>
 
 <script>
-import { db } from "@/firebase";
+import { db, fetchAllUsers } from "@/firebase";
+import router from "@/router";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { toBase64 } from "js-base64";
 import { sha256 } from "js-sha256";
+
 export default {
   name: "Home",
   data() {
@@ -23,7 +26,7 @@ export default {
   },
   mounted() {
     this.checkAuthStatus();
-    console.log(process.env.VUE_APP_TEST);
+    console.log(fetchAllUsers());
   },
   methods: {
     async login() {
@@ -37,6 +40,7 @@ export default {
           if (user.hashedPassword === hashedPassword) {
             this.saveAuthStatus(this.username);
             console.log("Успешная авторизация!");
+            router.push("/tasks");
           } else {
             console.log("Неправильный пароль");
           }
@@ -54,13 +58,14 @@ export default {
         const hashedPassword = sha256(this.password);
         await setDoc(userRef, { username: this.username, hashedPassword });
         this.saveAuthStatus(this.username);
+        router.push("/tasks");
         console.log("Пользователь зарегистрирован");
       } catch (error) {
         console.error("Ошибка регистрации:", error);
       }
     },
     saveAuthStatus(username) {
-      const hashedUsername = sha256(username);
+      const hashedUsername = toBase64(username);
       localStorage.setItem("isAuth", "true");
       localStorage.setItem("authUser", hashedUsername);
     },
@@ -68,8 +73,9 @@ export default {
       const isAuth = localStorage.getItem("isAuth");
       const authUser = localStorage.getItem("authUser");
       if (isAuth === "true" && authUser) {
-        // Пользователь авторизован, можно сделать дополнительные действия
         console.log("Пользователь авторизован");
+      } else {
+        console.log("net");
       }
     },
   },
