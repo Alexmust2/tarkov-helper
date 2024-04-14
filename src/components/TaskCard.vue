@@ -60,7 +60,6 @@ export default {
 
 <style scoped>
 .quest-card {
-  width: 300px;
   height: 300px;
   border-radius: 10px;
   overflow: hidden;
