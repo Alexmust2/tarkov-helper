@@ -19,7 +19,7 @@ async function fetchAllUsers() {
         const snapshot = await getDocs(usersCol);
         const userList = snapshot.docs.map(doc => doc.data());
         console.log(userList);
-        return userList;  // Возвращает массив объектов данных каждого документа
+        return userList;
     } catch (error) {
         console.error("Ошибка при получении документов:", error);
     }

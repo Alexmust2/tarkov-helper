@@ -44,7 +44,9 @@
 import TraderButton from "../components/TraderButton.vue";
 import TaskItem from "../components/TaskCard.vue";
 import { request, gql } from "graphql-request";
-
+import { db } from "@/firebase";
+import { decode } from "js-base64";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 export default {
   components: {
     TraderButton,
@@ -110,14 +112,27 @@ export default {
       this.tasks = data.tasks;
       this.traders = data.traders;
       console.log(this.traders);
-      // Update completedTasks from localStorage
-      this.completedTasks = JSON.parse(localStorage.getItem("completedTasks")) || [];
+      this.getUserCompletedTasks().then((completedTasks) => {
+        this.completedTasks = completedTasks;
+      });
     });
   },
   computed: {
     filteredTasks() {
       if (!this.selectedTrader) return this.tasks;
       return this.tasks.filter((task) => task.trader.id === this.selectedTrader);
+    },
+    getUserCompletedTasks() {
+      return async () => {
+        let username = localStorage.getItem("authUser");
+        const userRef = doc(db, "users", decode(username));
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          return userDoc.data().completedTasks || [];
+        } else {
+          return [];
+        }
+      };
     },
     filteredSortedTasks() {
       return this.sortedTasks.filter((task) =>
@@ -164,10 +179,14 @@ export default {
       localStorage.removeItem("completedTasks");
       window.location.reload();
     },
-    markTaskCompleted(taskId) {
+    async markTaskCompleted(taskId) {
       if (!this.completedTasks.includes(taskId)) {
         this.completedTasks.push(taskId);
         localStorage.setItem("completedTasks", JSON.stringify(this.completedTasks));
+
+        let username = localStorage.getItem("authUser");
+        const userRef = doc(db, "users", decode(username));
+        await setDoc(userRef, { completedTasks: this.completedTasks }, { merge: true });
       }
     },
     isTaskCompleted(taskId) {
