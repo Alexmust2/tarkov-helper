@@ -13,7 +13,6 @@
 import { db } from "@/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { sha256 } from "js-sha256";
-
 export default {
   name: "Home",
   data() {
@@ -23,8 +22,8 @@ export default {
     };
   },
   mounted() {
-    // Проверяем, есть ли пользователь в localStorage
     this.checkAuthStatus();
+    console.log(process.env.VUE_APP_TEST);
   },
   methods: {
     async login() {
