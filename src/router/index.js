@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Tasks from '../views/Tasks.vue'
+import Tasks from '../views/TasksView.vue'
+import HomeView from '@/views/HomeView.vue'
+import NotFoundView from '@/views/NotFoundView.vue'
 
 const routes = [
   {
@@ -8,18 +10,20 @@ const routes = [
     component: Tasks
   },
   {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/ItemsForTasks.vue')
+    path: '/',
+    name: 'home',
+    component: HomeView
+  },
+  {
+    path: '/:catchAll(.*)*',
+    name: 'notfound',
+    component: NotFoundView
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
-})
+});
 
-export default router
+export default router;
