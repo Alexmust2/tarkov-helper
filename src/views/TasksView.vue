@@ -27,8 +27,14 @@
       <h3>Выполнено {{ funcCompletedTasks.length }}/{{ filteredTasks.length }}</h3>
     </div>
   </div>
-  <ul class="quest-card-list">
-    <li v-for="task in filteredSortedTasks" :key="task.id" class="quest-card-item">
+  <div class="quest-card-list">
+    <li
+      v-for="task in filteredSortedTasks"
+      :key="task.id"
+      class="quest-card-item"
+      @mouseenter="showModal(task)"
+      @mouseleave="hideModal"
+    >
       <TaskItem
         :task="task"
         :kappaRequired="task.kappaRequired"
@@ -36,8 +42,15 @@
         :markTaskCompleted="markTaskCompleted"
         :completedTasks="completedTasks"
       />
+      <div class="modal" v-if="selectedTask && selectedTask.id === task.id">
+        <div class="modal-content">
+          <h3>{{ task.name }}</h3>
+          <p>{{ task.experience }}</p>
+          <!-- Добавьте другую информацию, которую нужно показать в модальном окне -->
+        </div>
+      </div>
     </li>
-  </ul>
+  </div>
 </template>
 
 <script>
@@ -59,6 +72,7 @@ export default {
       selectedTrader: null,
       completedTasks: [],
       sortBy: "none",
+      selectedTask: null,
       selectOptions: [
         { label: "По умолчанию", value: "none" },
         { label: "Не выполненные", value: "incomplete" },
@@ -75,6 +89,7 @@ export default {
         tasks(lang: ru) {
           id
           name
+          experience
           minPlayerLevel
           kappaRequired
           taskImageLink
@@ -108,10 +123,8 @@ export default {
     `;
 
     request("https://api.tarkov.dev/graphql", query).then((data) => {
-      console.log(data.tasks);
       this.tasks = data.tasks;
       this.traders = data.traders;
-      console.log(this.traders);
       this.getUserCompletedTasks().then((completedTasks) => {
         this.completedTasks = completedTasks;
       });
@@ -175,6 +188,12 @@ export default {
     },
   },
   methods: {
+    showModal(task) {
+      this.selectedTask = task;
+    },
+    hideModal() {
+      this.selectedTask = null;
+    },
     deleteProgress() {
       localStorage.removeItem("completedTasks");
       window.location.reload();

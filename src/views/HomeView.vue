@@ -26,7 +26,6 @@ export default {
   },
   mounted() {
     this.checkAuthStatus();
-    console.log(fetchAllUsers());
   },
   methods: {
     async login() {
