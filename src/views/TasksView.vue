@@ -43,7 +43,7 @@
         :completedTasks="completedTasks"
       />
     </li>
-    <TaskModal v-if="selectedTask" :task="selectedTask" @close="hideModal"/>
+    <TaskModal v-if="selectedTask" :task="selectedTask" @close="hideModal" @complete="finishedTask" @remove="removeTask"/>
   </div>
 </template>
 
@@ -244,16 +244,72 @@ export default {
       localStorage.removeItem("completedTasks");
       window.location.reload();
     },
+
     async markTaskCompleted(taskId) {
+      const task = this.tasks.find(task => task.id === taskId);
+
+      if (!task) {
+        console.error(`Task with id ${taskId} not found`);
+        return;
+      }
+
       if (!this.completedTasks.includes(taskId)) {
         this.completedTasks.push(taskId);
         localStorage.setItem("completedTasks", JSON.stringify(this.completedTasks));
 
         let username = localStorage.getItem("authUser");
-        const userRef = doc(db, "users", decode(username));
+        if (!username) {
+          console.error("No authenticated user found");
+          return;
+        }
+        username = decode(username);
+
+        const userRef = doc(db, "users", username);
+
+        const userDoc = await getDoc(userRef);
+        let objectives = [];
+        let counters = [];
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.objectives) {
+            objectives = userData.objectives;
+          }
+          if (userData.counters) {
+            counters = userData.counters;
+          }
+        }
+
+        task.objectives.forEach(objective => {
+          const updatedObjectives = objectives.filter(obj => obj.taskId !== taskId || obj.objectiveId !== objective.id);
+          updatedObjectives.push({
+            taskId: taskId,
+            objectiveId: objective.id,
+            completed: true,
+          });
+          objectives = updatedObjectives;
+        });
+
+        const countableObjectives = task.objectives.filter(objective => objective.count && objective.type !== 'findItem');
+        countableObjectives.forEach(countableObjective => {
+          const updatedCounter = counters.find(counter => counter.taskId === taskId && counter.objectiveId === countableObjective.id);
+          if (updatedCounter) {
+            updatedCounter.count = countableObjective.count;
+          } else {
+            counters.push({
+              taskId: taskId,
+              objectiveId: countableObjective.id,
+              count: countableObjective.count,
+            });
+          }
+        });
+
         await setDoc(userRef, { completedTasks: this.completedTasks }, { merge: true });
+        await setDoc(userRef, { objectives: objectives }, { merge: true });
+        await setDoc(userRef, { counters: counters }, { merge: true });
       }
     },
+
     isTaskCompleted(taskId) {
       return this.completedTasks.includes(taskId);
     },
@@ -262,6 +318,15 @@ export default {
     },
     funcSortBy(value) {
       this.sortBy = value;
+    },
+    finishedTask(taskId) {
+      this.completedTasks.push(taskId);
+    },
+    removeTask(taskId) {
+      const index = this.completedTasks.indexOf(taskId);
+      if (index !== -1) {
+        this.completedTasks.splice(index, 1);
+      }
     },
   },
 };

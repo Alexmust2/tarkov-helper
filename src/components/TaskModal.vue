@@ -48,10 +48,9 @@
           <div v-if="task.objectives.length" class="task-objectives">
             <div class="task-info-item">
               <strong>Цели задачи:</strong>
-              <div v-for="(objective, index) in task.objectives">
-                <div :key="index">
-                  <span >✅</span>
-                  <span >❌</span>
+              <div v-for="(objective, index) in task.objectives" :key="index">
+                <div>
+                  <span @click="toggleObjectiveStatus(index)">{{ objective.completed ? '✅' : '❌' }}</span>
                   {{ objective.description || 'Описание отсутствует' }}
                 </div>
               </div>
@@ -64,6 +63,8 @@
 </template>
 
 <script>
+import { db } from '@/firebase';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 export default {
   props: {
     task: {
@@ -74,6 +75,7 @@ export default {
   data() {
     return {
       counters: [],
+      user: null,
     };
   },
   computed: {
@@ -85,16 +87,12 @@ export default {
   },
   mounted() {
     this.initializeCounters();
-    console.log(this.counters)
+    this.user = atob(localStorage.getItem('authUser'));
+    this.loadUserData();
   },
   methods: {
     closeModal() {
       this.$emit('close');
-    },
-    incrementCounter(index) {
-      if (this.counters[index] < this.countableObjectives[index].count) {
-        this.counters[index]++;
-      }
     },
     initializeCounters() {
       if (this.countableObjectives.length > 0) {
@@ -103,12 +101,153 @@ export default {
         this.counters = [];
       }
     },
+    toggleObjectiveStatus(index) {
+      const objective = this.task.objectives[index];
+      objective.completed = !objective.completed;
+      this.saveObjectiveStatusToFirebase(index);
+      this.checkTaskCompletion();
+    },
+
+    incrementCounter(index) {
+      if (this.counters[index] < this.countableObjectives[index].count) {
+        this.counters[index]++;
+        this.saveCounterToFirebase(index);
+        this.checkTaskCompletion();
+      }
+    },
+
     decrementCounter(index) {
       if (this.counters[index] > 0) {
         this.counters[index]--;
+        this.saveCounterToFirebase(index);
+        this.checkTaskCompletion();
+      }
+    },
+    async saveCounterToFirebase(index) {
+      if (this.user) {
+        const userRef = doc(db, 'users', this.user);
+        const countableObjective = this.countableObjectives[index];
+        const userDoc = await getDoc(userRef);
+
+        let counters = [];
+        if (userDoc.exists() && userDoc.data().counters) {
+          counters = userDoc.data().counters;
+        }
+
+        const updatedCounters = counters.filter(counter => counter.taskId !== this.task.id || counter.objectiveId !== countableObjective.id);
+        updatedCounters.push({
+          taskId: this.task.id,
+          objectiveId: countableObjective.id,
+          count: this.counters[index],
+        });
+
+        await setDoc(userRef, { counters: updatedCounters }, { merge: true });
+      }
+    },
+    async saveObjectiveStatusToFirebase(index) {
+      if (this.user) {
+        const userRef = doc(db, 'users', this.user);
+        const objective = this.task.objectives[index];
+        const userDoc = await getDoc(userRef);
+
+        let objectives = [];
+        if (userDoc.exists() && userDoc.data().objectives) {
+          objectives = userDoc.data().objectives;
+        }
+
+        const updatedObjectives = objectives.filter(obj => obj.taskId !== this.task.id || obj.objectiveId !== objective.id);
+        updatedObjectives.push({
+          taskId: this.task.id,
+          objectiveId: objective.id,
+          completed: objective.completed,
+        });
+
+        await setDoc(userRef, { objectives: updatedObjectives }, { merge: true });
+      }
+    },
+    loadUserData() {
+      if (this.user) {
+        const userRef = doc(db, 'users', this.user);
+
+        // Set up a snapshot listener to get real-time updates
+        onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const userData = doc.data();
+            this.loadCountersFromFirebase(userData.counters);
+            this.loadObjectivesFromFirebase(userData.objectives);
+          } else {
+            console.error("User document does not exist");
+          }
+        }, (error) => {
+          console.error("Error fetching user data: ", error);
+        });
+      }
+    },
+    loadCountersFromFirebase(counters) {
+      if (counters) {
+        const taskCounters = counters.filter((counter) => counter.taskId === this.task.id);
+        this.counters = this.countableObjectives.map((objective) => {
+          const counterData = taskCounters.find((counter) => counter.objectiveId === objective.id);
+          return counterData ? counterData.count : 0;
+        });
+      }
+    },
+    loadObjectivesFromFirebase(objectives) {
+      if (objectives) {
+        const taskObjectives = objectives.filter((objective) => objective.taskId === this.task.id);
+        this.task.objectives.forEach((objective) => {
+          const objectiveData = taskObjectives.find((obj) => obj.objectiveId === objective.id);
+          console.log(objectiveData)
+          if (objectiveData) {
+            objective.completed = objectiveData.completed;
+          }
+        });
+      }
+    },
+    checkTaskCompletion() {
+      const objectivesCompleted = this.task.objectives.every(objective => objective.completed);
+      const countersMatch = this.counters.every((count, index) => count === this.countableObjectives[index].count);
+
+      if (objectivesCompleted && countersMatch) {
+        this.addToCompletedTasks();
+      } else {
+        this.removeFromCompletedTasks();
+      }
+    },
+    async addToCompletedTasks() {
+      if (this.user) {
+        const userRef = doc(db, 'users', this.user);
+        const userDoc = await getDoc(userRef);
+
+        let completedTasks = [];
+        if (userDoc.exists() && userDoc.data().completedTasks) {
+          completedTasks = [...userDoc.data().completedTasks];
+        }
+        this.$emit('complete', this.task.id);
+
+        const updatedCompletedTasks = [...new Set([...completedTasks, this.task.id])];
+
+        await setDoc(userRef, { completedTasks: updatedCompletedTasks}, { merge: true });
+      }
+    },
+
+    async removeFromCompletedTasks() {
+      if (this.user) {
+        const userRef = doc(db, 'users', this.user);
+        const userDoc = await getDoc(userRef);
+
+        let completedTasks = [];
+        if (userDoc.exists() && userDoc.data().completedTasks) {
+          completedTasks = [...userDoc.data().completedTasks];
+        }
+
+        const updatedCompletedTasks = completedTasks.filter(taskId => taskId !== this.task.id);
+        this.$emit('remove', this.task.id);
+
+        await setDoc(userRef, { completedTasks: updatedCompletedTasks }, { merge: true });
       }
     }
-  }
+  },
 };
 </script>
 
@@ -183,7 +322,7 @@ export default {
   justify-content: space-between;
   margin-top: 10px;
   flex-wrap: wrap;
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
 }
 

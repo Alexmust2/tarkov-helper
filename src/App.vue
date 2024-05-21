@@ -23,4 +23,19 @@ nav {
     }
   }
 }
+
+::-webkit-scrollbar {
+  width: 5px;
+  background-color: transparent;
+}
+
+/* Для самой полосы прокрутки */
+::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
 </style>
