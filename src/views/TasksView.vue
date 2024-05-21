@@ -32,30 +32,25 @@
       v-for="task in filteredSortedTasks"
       :key="task.id"
       class="quest-card-item"
-      @mouseenter="showModal(task)"
-      @mouseleave="hideModal"
+      @click="showModal(task)"
     >
       <TaskItem
+         @click="showModal(task)"
         :task="task"
         :kappaRequired="task.kappaRequired"
         :isTaskCompleted="isTaskCompleted"
         :markTaskCompleted="markTaskCompleted"
         :completedTasks="completedTasks"
       />
-      <div class="modal" v-if="selectedTask && selectedTask.id === task.id">
-        <div class="modal-content">
-          <h3>{{ task.name }}</h3>
-          <p>{{ task.experience }}</p>
-          <!-- Добавьте другую информацию, которую нужно показать в модальном окне -->
-        </div>
-      </div>
     </li>
+    <TaskModal v-if="selectedTask" :task="selectedTask" @close="hideModal"/>
   </div>
 </template>
 
 <script>
 import TraderButton from "../components/TraderButton.vue";
 import TaskItem from "../components/TaskCard.vue";
+import TaskModal from "../components/TaskModal.vue";
 import { request, gql } from "graphql-request";
 import { db } from "@/firebase";
 import { decode } from "js-base64";
@@ -64,6 +59,7 @@ export default {
   components: {
     TraderButton,
     TaskItem,
+    TaskModal
   },
   data() {
     return {
@@ -85,42 +81,91 @@ export default {
   },
   async mounted() {
     const query = gql`
-      {
-        tasks(lang: ru) {
+  {
+    tasks(lang: ru) {
+      id
+      name
+      experience
+      minPlayerLevel
+      kappaRequired
+      taskImageLink
+      trader {
+        id
+        name
+      }
+      taskRequirements {
+        task {
           id
           name
-          experience
-          minPlayerLevel
-          kappaRequired
-          taskImageLink
-          trader {
-            id
-            name
-          }
-          taskRequirements {
-            task {
-              id
-              name
-            }
-          }
-          objectives {
-            ... on TaskObjectiveItem {
-              type
-              description
-              item {
-                iconLink
-              }
-              count
-            }
-          }
-        }
-        traders(lang: ru) {
-          id
-          name
-          imageLink
         }
       }
-    `;
+      objectives {
+        id
+        optional
+        description
+        type
+        ... on TaskObjectiveItem {
+          items {
+            name
+            id
+            iconLink
+          }
+          count
+        }
+        ... on TaskObjectiveBasic {
+          description
+        }
+        ... on TaskObjectiveBuildItem {
+          description
+        }
+        ... on TaskObjectiveExperience {
+          description
+          count
+        }
+        ... on TaskObjectiveExtract {
+          exitName
+          count
+          description
+        }
+        ... on TaskObjectiveMark {
+          description
+        }
+        ... on TaskObjectivePlayerLevel {
+          description
+        }
+        ... on TaskObjectiveQuestItem {
+          description
+          count
+        }
+        ... on TaskObjectiveShoot {
+          description
+          count
+        }
+        ... on TaskObjectiveSkill {
+          description
+        }
+        ... on TaskObjectiveTaskStatus {
+          description
+        }
+        ... on TaskObjectiveTraderLevel {
+          description
+        }
+        ... on TaskObjectiveTraderStanding {
+          description
+        }
+        ... on TaskObjectiveUseItem {
+          description
+          count
+        }
+      }
+    }
+    traders(lang: ru) {
+      id
+      name
+      imageLink
+    }
+  }
+`;
 
     request("https://api.tarkov.dev/graphql", query).then((data) => {
       this.tasks = data.tasks;
@@ -190,6 +235,7 @@ export default {
   methods: {
     showModal(task) {
       this.selectedTask = task;
+      console.log(this.selectedTask )
     },
     hideModal() {
       this.selectedTask = null;
@@ -263,6 +309,10 @@ h3 {
 .trader-button.reset {
   background: #ff6b6b;
   color: white;
+}
+
+.reset-progress-btn {
+  margin-left: 15px;
 }
 
 .search-and-interaction {

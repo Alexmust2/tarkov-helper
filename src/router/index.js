@@ -31,4 +31,23 @@ const router = createRouter({
   routes
 });
 
+router.beforeEach((to, from, next) => {
+  const isAuth = localStorage.getItem('isAuth');
+  const authUser = localStorage.getItem('authUser');
+
+  if (isAuth === 'true' && authUser) {
+    if (to.name === 'home') {
+      next({ name: 'tasks' });
+    } else {
+      next();
+    }
+  } else {
+    if (to.name !== 'home') {
+      next({ name: 'home' });
+    } else {
+      next();
+    }
+  }
+});
+
 export default router;
