@@ -30,14 +30,15 @@ export default {
   methods: {
     async login() {
       try {
-        const userRef = doc(db, "users", this.username);
+        const usernameLower = this.username.toLowerCase(); // Преобразуем в lowercase
+        const userRef = doc(db, "users", usernameLower);
         const userSnapshot = await getDoc(userRef);
 
         if (userSnapshot.exists()) {
           const user = userSnapshot.data();
           const hashedPassword = sha256(this.password);
           if (user.hashedPassword === hashedPassword) {
-            this.saveAuthStatus(this.username);
+            this.saveAuthStatus(usernameLower);
             console.log("Успешная авторизация!");
             router.push("/tasks");
           } else {
@@ -53,10 +54,11 @@ export default {
     },
     async register() {
       try {
-        const userRef = doc(db, "users", this.username);
+        const usernameLower = this.username.toLowerCase(); // Преобразуем в lowercase
+        const userRef = doc(db, "users", usernameLower);
         const hashedPassword = sha256(this.password);
-        await setDoc(userRef, { username: this.username, hashedPassword });
-        this.saveAuthStatus(this.username);
+        await setDoc(userRef, { username: usernameLower, hashedPassword });
+        this.saveAuthStatus(usernameLower);
         router.push("/tasks");
         console.log("Пользователь зарегистрирован");
       } catch (error) {

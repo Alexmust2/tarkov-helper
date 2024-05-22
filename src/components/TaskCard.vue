@@ -1,31 +1,48 @@
 <template>
   <div
-    class="quest-card"
-    :style="{ backgroundColor: isTaskCompleted(task.id) ? 'lightgreen' : 'white' }"
+      class="quest-card"
+      :style="{ backgroundColor: isTaskCompleted(task.id) ? 'lightgreen' : 'white' }"
   >
     <div
-      class="quest-image"
-      :style="{ backgroundImage: 'url(' + task.taskImageLink + ')' }"
+        class="quest-image"
+        :style="{ backgroundImage: 'url(' + task.taskImageLink + ')' }"
     >
       <div v-if="task.kappaRequired" class="kappa-icon"></div>
     </div>
     <div class="quest-name">{{ task.name }}</div>
     <div class="quest-actions">
       <button
-        @click="toggleTaskCompletion"
-        @click.stop
-        :class="['quest-button', { completed: isTaskCompleted(task.id) }]"
+          @click="toggleTaskCompletion"
+          @click.stop
+          :class="['quest-button', { completed: isTaskCompleted(task.id) }]"
       >
         {{ isTaskCompleted(task.id) ? "Отменить" : "Выполнить" }}
       </button>
+<!--      <button @click="showRewardsModal" @click.stop class="quest-button">Награды</button>-->
+    </div>
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="closeModal">&times;</span>
+        <h2>Награды за выполнение задачи "{{ task.name }}"</h2>
+        <div v-for="reward in rewards.traderStanding" :key="reward.trader.name">
+          <h3>{{ reward.trader.name }}</h3>
+          <img :src="reward.trader.imageLink" alt="Trader Image" style="max-width: 100px;">
+          <p>Статус: {{ reward.standing }}</p>
+        </div>
+        <div v-for="item in rewards.items" :key="item.item.id">
+          <img :src="item.item.iconLink" alt="Item Icon" style="max-width: 50px;">
+          <p>{{ item.item.name }}: {{ item.count }}</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import {doc, getDoc, setDoc} from "firebase/firestore";
-import { db } from '@/firebase';
-import {decode} from "js-base64";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/firebase";
+import { decode } from "js-base64";
+import {gql, request} from "graphql-request";
 
 export default {
   props: {
@@ -46,6 +63,12 @@ export default {
       required: true,
     },
   },
+  data() {
+    return {
+      showModal: false,
+      rewards: [],
+    };
+  },
   methods: {
     async toggleTaskCompletion() {
       if (!this.isTaskCompleted(this.task.id)) {
@@ -62,6 +85,39 @@ export default {
       }
     },
 
+    showRewardsModal() {
+      const query = gql`
+{
+              task(lang: ru, id: "${this.task.id}") {
+                id
+                name
+                finishRewards {
+                  traderStanding {
+                    trader {
+                      name
+                      imageLink
+                    }
+                    standing
+                  }
+                  items {
+                    item {
+                      id
+                      name
+                      iconLink
+                    }
+                    count
+                  }
+                }
+              }
+            }
+`;
+
+      request("https://api.tarkov.dev/graphql", query).then((data) => {
+        this.rewards = data.task
+        console.log(this.rewards)
+        this.showModal = true;
+      });
+    },
     async deleteTaskFromFirebase(taskId) {
       const username = localStorage.getItem("authUser");
       if (!username) {
@@ -73,7 +129,6 @@ export default {
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        // Обновление объектов objectives для установки поля completed в false для задачи с taskId
         let objectives = userData.objectives || [];
         objectives = objectives.map(obj => {
           if (obj.taskId === taskId) {
@@ -94,7 +149,10 @@ export default {
           completedTasks: completedTasks
         }, { merge: true });
       }
-    }
+    },
+    closeModal() {
+      this.showModal = false;
+    },
   },
 };
 </script>
@@ -156,5 +214,38 @@ export default {
   background-image: url("../assets/kappa.png");
   background-size: cover;
   margin-left: 10px;
+}
+
+.modal {
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
 }
 </style>
