@@ -26,11 +26,12 @@ export default {
   },
   mounted() {
     this.checkAuthStatus();
+    console.log(process.env.VUE_APP_FIREBASE_API_KEY);
   },
   methods: {
     async login() {
       try {
-        const usernameLower = this.username.toLowerCase(); // Преобразуем в lowercase
+        const usernameLower = this.username.toLowerCase();
         const userRef = doc(db, "users", usernameLower);
         const userSnapshot = await getDoc(userRef);
 
@@ -54,7 +55,7 @@ export default {
     },
     async register() {
       try {
-        const usernameLower = this.username.toLowerCase(); // Преобразуем в lowercase
+        const usernameLower = this.username.toLowerCase();
         const userRef = doc(db, "users", usernameLower);
         const hashedPassword = sha256(this.password);
         await setDoc(userRef, { username: usernameLower, hashedPassword });

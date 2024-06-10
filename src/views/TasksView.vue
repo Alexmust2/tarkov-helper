@@ -14,9 +14,17 @@
     </button>
   </div>
   <div class="search-and-interaction">
-    <input type="text" v-model="searchTerm" placeholder="Поиск..." class="search-input" />
+    <input
+      type="text"
+      v-model="searchTerm"
+      placeholder="Поиск..."
+      class="search-input"
+    />
     <div class="task-interaction">
-      <select v-on:change="funcSortBy($event.target.value)" class="custom-select">
+      <select
+        v-on:change="funcSortBy($event.target.value)"
+        class="custom-select"
+      >
         <option v-for="option in selectOptions" :value="option.value">
           {{ option.label }}
         </option>
@@ -24,7 +32,9 @@
       <button @click="deleteProgress()" class="reset-progress-btn">
         Сбросить прогресс
       </button>
-      <h3>Выполнено {{ funcCompletedTasks.length }}/{{ filteredTasks.length }}</h3>
+      <h3>
+        Выполнено {{ funcCompletedTasks.length }}/{{ filteredTasks.length }}
+      </h3>
     </div>
   </div>
   <div class="quest-card-list">
@@ -35,7 +45,7 @@
       @click="showModal(task)"
     >
       <TaskItem
-         @click="showModal(task)"
+        @click="showModal(task)"
         :task="task"
         :kappaRequired="task.kappaRequired"
         :isTaskCompleted="isTaskCompleted"
@@ -43,7 +53,13 @@
         :completedTasks="completedTasks"
       />
     </li>
-    <TaskModal v-if="selectedTask" :task="selectedTask" @close="hideModal" @complete="finishedTask" @remove="removeTask"/>
+    <TaskModal
+      v-if="selectedTask"
+      :task="selectedTask"
+      @close="hideModal"
+      @complete="finishedTask"
+      @remove="removeTask"
+    />
   </div>
 </template>
 
@@ -54,12 +70,15 @@ import TaskModal from "../components/TaskModal.vue";
 import { request, gql } from "graphql-request";
 import { db } from "@/firebase";
 import { decode } from "js-base64";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import firebase from 'firebase/compat/app'
+import 'firebase/compat/firestore'
+
 export default {
   components: {
     TraderButton,
     TaskItem,
-    TaskModal
+    TaskModal,
   },
   data() {
     return {
@@ -81,91 +100,91 @@ export default {
   },
   async mounted() {
     const query = gql`
-  {
-    tasks(lang: ru) {
-      id
-      name
-      experience
-      minPlayerLevel
-      kappaRequired
-      taskImageLink
-      trader {
-        id
-        name
-      }
-      taskRequirements {
-        task {
+      {
+        tasks(lang: ru) {
           id
           name
-        }
-      }
-      objectives {
-        id
-        optional
-        description
-        type
-        ... on TaskObjectiveItem {
-          items {
-            name
+          experience
+          minPlayerLevel
+          kappaRequired
+          taskImageLink
+          trader {
             id
-            iconLink
+            name
           }
-          count
+          taskRequirements {
+            task {
+              id
+              name
+            }
+          }
+          objectives {
+            id
+            optional
+            description
+            type
+            ... on TaskObjectiveItem {
+              items {
+                name
+                id
+                iconLink
+              }
+              count
+            }
+            ... on TaskObjectiveBasic {
+              description
+            }
+            ... on TaskObjectiveBuildItem {
+              description
+            }
+            ... on TaskObjectiveExperience {
+              description
+              count
+            }
+            ... on TaskObjectiveExtract {
+              exitName
+              count
+              description
+            }
+            ... on TaskObjectiveMark {
+              description
+            }
+            ... on TaskObjectivePlayerLevel {
+              description
+            }
+            ... on TaskObjectiveQuestItem {
+              description
+              count
+            }
+            ... on TaskObjectiveShoot {
+              description
+              count
+            }
+            ... on TaskObjectiveSkill {
+              description
+            }
+            ... on TaskObjectiveTaskStatus {
+              description
+            }
+            ... on TaskObjectiveTraderLevel {
+              description
+            }
+            ... on TaskObjectiveTraderStanding {
+              description
+            }
+            ... on TaskObjectiveUseItem {
+              description
+              count
+            }
+          }
         }
-        ... on TaskObjectiveBasic {
-          description
-        }
-        ... on TaskObjectiveBuildItem {
-          description
-        }
-        ... on TaskObjectiveExperience {
-          description
-          count
-        }
-        ... on TaskObjectiveExtract {
-          exitName
-          count
-          description
-        }
-        ... on TaskObjectiveMark {
-          description
-        }
-        ... on TaskObjectivePlayerLevel {
-          description
-        }
-        ... on TaskObjectiveQuestItem {
-          description
-          count
-        }
-        ... on TaskObjectiveShoot {
-          description
-          count
-        }
-        ... on TaskObjectiveSkill {
-          description
-        }
-        ... on TaskObjectiveTaskStatus {
-          description
-        }
-        ... on TaskObjectiveTraderLevel {
-          description
-        }
-        ... on TaskObjectiveTraderStanding {
-          description
-        }
-        ... on TaskObjectiveUseItem {
-          description
-          count
+        traders(lang: ru) {
+          id
+          name
+          imageLink
         }
       }
-    }
-    traders(lang: ru) {
-      id
-      name
-      imageLink
-    }
-  }
-`;
+    `;
 
     request("https://api.tarkov.dev/graphql", query).then((data) => {
       this.tasks = data.tasks;
@@ -178,7 +197,9 @@ export default {
   computed: {
     filteredTasks() {
       if (!this.selectedTrader) return this.tasks;
-      return this.tasks.filter((task) => task.trader.id === this.selectedTrader);
+      return this.tasks.filter(
+        (task) => task.trader.id === this.selectedTrader
+      );
     },
     getUserCompletedTasks() {
       return async () => {
@@ -227,7 +248,9 @@ export default {
           break;
       }
       if (this.selectedTrader) {
-        sorted = sorted.filter((task) => task.trader.id === this.selectedTrader);
+        sorted = sorted.filter(
+          (task) => task.trader.id === this.selectedTrader
+        );
       }
       return sorted;
     },
@@ -235,18 +258,39 @@ export default {
   methods: {
     showModal(task) {
       this.selectedTask = task;
-      console.log(this.selectedTask )
+      console.log(this.selectedTask);
     },
     hideModal() {
       this.selectedTask = null;
     },
     deleteProgress() {
       localStorage.removeItem("completedTasks");
-      window.location.reload();
+
+      let username = localStorage.getItem("authUser");
+      if (!username) {
+        window.location.reload();
+        return;
+      }
+
+      username = decode(username);
+
+      const userRef = doc(db, "users", username);
+
+      updateDoc(userRef, {
+        completedTasks: firebase.firestore.FieldValue.delete(),
+        counters: firebase.firestore.FieldValue.delete(),
+        objectives: firebase.firestore.FieldValue.delete(),
+      })
+        .then(() => {
+          window.location.reload();
+        })
+        .catch((error) => {
+          console.error("Error resetting user data: ", error);
+        });
     },
 
     async markTaskCompleted(taskId) {
-      const task = this.tasks.find(task => task.id === taskId);
+      const task = this.tasks.find((task) => task.id === taskId);
 
       if (!task) {
         console.error(`Task with id ${taskId} not found`);
@@ -255,7 +299,10 @@ export default {
 
       if (!this.completedTasks.includes(taskId)) {
         this.completedTasks.push(taskId);
-        localStorage.setItem("completedTasks", JSON.stringify(this.completedTasks));
+        localStorage.setItem(
+          "completedTasks",
+          JSON.stringify(this.completedTasks)
+        );
 
         let username = localStorage.getItem("authUser");
         if (!username) {
@@ -280,8 +327,10 @@ export default {
           }
         }
 
-        task.objectives.forEach(objective => {
-          const updatedObjectives = objectives.filter(obj => obj.taskId !== taskId || obj.objectiveId !== objective.id);
+        task.objectives.forEach((objective) => {
+          const updatedObjectives = objectives.filter(
+            (obj) => obj.taskId !== taskId || obj.objectiveId !== objective.id
+          );
           updatedObjectives.push({
             taskId: taskId,
             objectiveId: objective.id,
@@ -290,9 +339,15 @@ export default {
           objectives = updatedObjectives;
         });
 
-        const countableObjectives = task.objectives.filter(objective => objective.count && objective.type !== 'findItem');
-        countableObjectives.forEach(countableObjective => {
-          const updatedCounter = counters.find(counter => counter.taskId === taskId && counter.objectiveId === countableObjective.id);
+        const countableObjectives = task.objectives.filter(
+          (objective) => objective.count && objective.type !== "findItem"
+        );
+        countableObjectives.forEach((countableObjective) => {
+          const updatedCounter = counters.find(
+            (counter) =>
+              counter.taskId === taskId &&
+              counter.objectiveId === countableObjective.id
+          );
           if (updatedCounter) {
             updatedCounter.count = countableObjective.count;
           } else {
@@ -304,7 +359,11 @@ export default {
           }
         });
 
-        await setDoc(userRef, { completedTasks: this.completedTasks }, { merge: true });
+        await setDoc(
+          userRef,
+          { completedTasks: this.completedTasks },
+          { merge: true }
+        );
         await setDoc(userRef, { objectives: objectives }, { merge: true });
         await setDoc(userRef, { counters: counters }, { merge: true });
       }

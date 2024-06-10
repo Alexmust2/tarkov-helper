@@ -8,7 +8,6 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  background-color: #2c3e50;
 }
 
 nav {
@@ -29,7 +28,6 @@ nav {
   background-color: transparent;
 }
 
-/* Для самой полосы прокрутки */
 ::-webkit-scrollbar-thumb {
   background-color: #888;
   border-radius: 5px;
